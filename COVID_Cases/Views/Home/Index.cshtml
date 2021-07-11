@@ -1,0 +1,53 @@
+﻿@model COVID_Cases.Models.RegionsViewModel
+
+@{
+    ViewBag.Title = "Home Page";
+}
+
+<h2>TOP 10 COVID CASES</h2>
+<hr />
+
+<div class="row">
+    <div class="col-md-4">
+        @Html.DropDownListFor(x => Model.iso, Model.Regions, new { @class = "form-control" })
+        <button type="button" class="btn btn-primary">Report</button>
+        <button type="button" class="btn btn-warning">XML</button>
+        <button type="button" class="btn btn-success">JSON</button>
+        <button type="button" class="btn btn-info">CSV</button>
+    </div>
+</div>
+<form asp-action="">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    
+
+
+   
+</form>
+
+<hr />
+
+<table class="table">
+    <thead>
+        <tr>
+            <th scope="col">REGION</th>
+            <th scope="col">CASES</th>
+            <th scope="col">DEATH</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.dataCountries)
+        {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.Name)
+            </td>
+            <td>
+                <p class="form-control-static">@Html.DisplayFor(modelItem => item.cases)</p>
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.deaths)
+            </td>
+        </tr>
+        }
+    </tbody>
+</table>
