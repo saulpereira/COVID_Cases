@@ -31,4 +31,5 @@ textarea {
 .form-control-static
 {
     text-align: right;
+    padding-right: 300px;
 }
