@@ -20,7 +20,7 @@
 
 <div class="row">
     <div class="col-md-4">
-        <table class="table">
+        <table class="table" id="table-entities">
             <thead>
                 <tr>
                     <th scope="col">REGION</th>
@@ -52,8 +52,28 @@
     <script type="text/javascript">
         $(document).ready(function () {
             $("#btnReport").click(function () {
-                var select = $('#iso').val();
-                alert('Selected = ' + select);
+                $("#table-entities").empty();
+                $.ajax({
+                    type: 'POST',
+                    url: '@Url.Action("GetProvinces")',
+                    dataType: 'json',
+                    data: { ProvinceId: $('#iso').val() },
+                    success: function (dataCountries) {
+                        console.log(dataCountries);
+                        $.each(dataCountries, function (i, item) {
+                            $("#table-entities").append(
+                                '<tr>' + 
+                                '<td>' + item.Name + '</td>' +
+                                '<td>' + item.cases + '</td>' +
+                                '<td>' + item.deaths + '</td>' +
+                                '</tr>');
+                        });
+                	},
+                    error: function (ex) {
+                        alert('data = ' + data);
+                    	alert('Failed to retrieve Provinces.' + ex);
+                	}
+            	});
             });
         });
     </script>

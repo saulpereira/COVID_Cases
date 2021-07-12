@@ -52,7 +52,8 @@ namespace COVID_Cases.Controllers
                 model.dataCountries =  this.GetTopCountries(countries);
             }
 
-            GetProvincesAsync("USA");
+            IEnumerable<CountriesSelected> countriesList;
+            //countriesList = GetProvinces("USA");
 
 
             return View(model);
@@ -100,7 +101,7 @@ namespace COVID_Cases.Controllers
         }
 
         //public async Task<JsonResult> GetProvincesAsync(string ProvinceId)
-        public void GetProvincesAsync(string ProvinceId)
+        public JsonResult GetProvinces(string ProvinceId)
         {
             HttpClient cliente = new HttpClient();
             cliente.BaseAddress = new Uri("https://covid-19-statistics.p.rapidapi.com/");
@@ -117,18 +118,22 @@ namespace COVID_Cases.Controllers
                 MissingMemberHandling = MissingMemberHandling.Ignore
             };
 
-            //var request = cliente.GetAsync("reports").Result;
             var request = cliente.GetAsync(builder.Uri).Result;
             Countries countries = new Countries();
+            IEnumerable<CountriesSelected> countriesList;
 
             if (request.IsSuccessStatusCode)
             {
                 var resultString = request.Content.ReadAsStringAsync().Result;
                 countries = JsonConvert.DeserializeObject<Countries>(resultString, settings);
 
-                model.dataCountries = this.GetTopProvinces(countries);
-               
+                //model.dataCountries = this.GetTopProvinces(countries);
+                countriesList= this.GetTopProvinces(countries);
+
+                return Json(countriesList);
             }
+
+            return null;
         }
 
         public IEnumerable<CountriesSelected> GetTopProvinces(Countries countries)
