@@ -1,4 +1,5 @@
-﻿using COVID_Cases.Models;
+﻿using COVID_Cases.Data;
+using COVID_Cases.Models;
 using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -12,122 +13,28 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
+using System.Xml.Linq;
+using System.Xml.Serialization;
 
 namespace COVID_Cases.Controllers
 {
     public class HomeController : Controller
     {
-        RegionsViewModel model = new RegionsViewModel();
-        Countries countries = new Countries();
-        IEnumerable<CountriesSelected> countriesList;
+        IEnumerable<CountriesSelected> countries;
         public async Task<ActionResult> Index()
         {
-            HttpClient cliente = new HttpClient();
-            cliente.BaseAddress = new Uri("https://covid-19-statistics.p.rapidapi.com/");
-            cliente.DefaultRequestHeaders.Add("x-rapidapi-key", "ccc4385e04mshf4ed1ca42485851p15dd54jsn577c8b2c68c7");
-            cliente.DefaultRequestHeaders.Add("x-rapidapi-host", "covid-19-statistics.p.rapidapi.com");
-
-            // Reading Regions
-           
-            var settings = new JsonSerializerSettings
-            {
-                NullValueHandling = NullValueHandling.Ignore,
-                MissingMemberHandling = MissingMemberHandling.Ignore
-            };
-
-            var request = cliente.GetAsync("regions").Result;
-            RegionHolder regions = new RegionHolder();
-
-            if (request.IsSuccessStatusCode)
-            {
-                var resultString = request.Content.ReadAsStringAsync().Result;
-                regions  = JsonConvert.DeserializeObject<RegionHolder>(resultString, settings);
-
-                model.Regions = this.GetRegions(regions);
-            }
-
-            // Reading Top 10 Countries
-            request = cliente.GetAsync("reports").Result;
-            //Countries countries = new Countries();
+            RegionsViewModel model = new RegionsViewModel();
             
-            if (request.IsSuccessStatusCode)
-            {
-                var resultString = request.Content.ReadAsStringAsync().Result;
-                countries = JsonConvert.DeserializeObject<Countries>(resultString, settings);
 
-                model.dataCountries =  this.GetTopEntities(countries, "country");
-                countriesList = model.dataCountries;
+            //Getting Regions
+            model.Regions = DataApi.GetRegions();
 
-                //return Json(countriesList);
-            }
-
-            //IEnumerable<CountriesSelected> countriesList;
-            //countriesList = GetProvinces("USA");
-
+            countries = DataApi.GetCountries();
+            model.dataCountries = countries;
 
             return View(model);
         }
 
-        public IEnumerable<SelectListItem> GetRegions(RegionHolder regions1)
-        {
-            List<SelectListItem> item = regions1.data.ConvertAll(a =>
-           {
-               return new SelectListItem()
-               {
-                   Text = a.name,
-                   Value = a.iso
-               };
-           });
-
-            item.Insert(0, new SelectListItem
-            {
-                Text = "(Select a Region...)",
-                Value = "0"
-            }); ;
-
-            return item.OrderBy(x => x.Text);
-        }
-
-        public IEnumerable<CountriesSelected> GetTopEntities(Countries countries, string entity)
-        {
-
-            List<CountriesSelected> lista = new List<CountriesSelected>();
-            CountriesSelected countries1 = new CountriesSelected();
-            
-           
-            if (entity == "country")
-            {
-                var countries2 = countries.data
-                .GroupBy(y => y.Region.iso)
-                .OrderByDescending(group => group.Sum(c => c.confirmed))
-                .Take(10)
-                .Select(group => new { Name = group.Key, Cases = group.Sum(a => a.confirmed), Deaths = group.Sum(b => b.deaths) })
-                .ToList();
-
-                foreach (var item in countries2)
-                {
-                    lista.Add(new CountriesSelected { Name = item.Name, cases = item.Cases, deaths = item.Deaths });
-                }
-            }
-            else //Provinces
-            {
-                var countries2 = countries.data
-               .GroupBy(y => y.Region.province)
-               .OrderByDescending(group => group.Sum(c => c.confirmed))
-               .Take(10)
-               .Select(group => new { Name = group.Key, Cases = group.Sum(a => a.confirmed), Deaths = group.Sum(b => b.deaths) })
-               .ToList();
-
-                foreach (var item in countries2)
-                {
-                    lista.Add(new CountriesSelected { Name = item.Name, cases = item.Cases, deaths = item.Deaths });
-                }
-            }
-            
-            return lista;
-        }
-
-  
         public JsonResult GetProvinces(string ProvinceId)
         {
             HttpClient cliente = new HttpClient();
@@ -137,7 +44,10 @@ namespace COVID_Cases.Controllers
 
             UriBuilder builder = new UriBuilder("https://covid-19-statistics.p.rapidapi.com/reports");
             builder.Query = "iso=" + ProvinceId;
-            
+
+            Countries countries = new Countries();
+            IEnumerable<CountriesSelected> countriesList;
+
             var settings = new JsonSerializerSettings
             {
                 NullValueHandling = NullValueHandling.Ignore,
@@ -145,16 +55,13 @@ namespace COVID_Cases.Controllers
             };
 
             var request = cliente.GetAsync(builder.Uri).Result;
-            //Countries countries = new Countries();
-            //IEnumerable<CountriesSelected> countriesList;
-
+        
             if (request.IsSuccessStatusCode)
             {
                 var resultString = request.Content.ReadAsStringAsync().Result;
                 countries = JsonConvert.DeserializeObject<Countries>(resultString, settings);
 
-                //model.dataCountries = this.GetTopProvinces(countries);
-                countriesList= this.GetTopEntities(countries, "province");
+                countriesList = DataApi.GetTopEntities(countries, "province");
 
                 return Json(countriesList);
             }
@@ -163,40 +70,69 @@ namespace COVID_Cases.Controllers
         }
 
         //public async Task<IActionResult> ConvertToJson(int? id)
-       public IActionResult ConvertToXML()
+        public ViewResult ConvertToXML()
         {
-            var prueba = "";
-            //countriesList = this.GetTopEntities(countries, "country");
-            foreach (var item in countriesList)
-            {
-                prueba = item.Name;
-            }
+            countries = DataApi.GetCountries();
 
-            return null;
+            XElement xml = new XElement("countries",
+                                       from country in countries
+                                       select new XElement("country",
+                                                           new XElement("name", country.Name),
+                                                           new XElement("cases", country.cases),
+                                                           new XElement("deaths", country.deaths))
+                                       );
+            xml.Save(@"c:\temp\countries.xml");
+
+            return View();
         }
 
 
-        public IActionResult ConvertToJson()
+        public ViewResult ConvertToJson()
         {
-            var prueba = "";
-            foreach (var item in model.dataCountries)
-            {
-                prueba = item.Name;
-            }
+            string countriesFile = @"C:\Temp\countries.txt";
             
-            return null;
+            countries = DataApi.GetCountries();
 
+            string json = JsonConvert.SerializeObject(countries.ToArray());
+
+            //write string to file
+            System.IO.File.WriteAllText(countriesFile, json);
+
+            return View();
         }
 
-        public IActionResult ConvertToCSV()
+        public ViewResult ConvertToCSV()
         {
-            var prueba = "";
-            foreach (var item in model.dataCountries)
+            string countriesFile = @"C:\Temp\countries.csv";
+           
+            countries = DataApi.GetCountries();
+            SaveToTextFile(countries, countriesFile);
+
+            return View();
+        }
+
+        public static void SaveToTextFile(IEnumerable<CountriesSelected> data, string filePath) 
+        {
+            List<string> lines = new List<string>();
+            StringBuilder line = new StringBuilder();
+
+            if (data == null || data.Count() == 0)
             {
-                prueba = item.Name;
+                throw new ArgumentNullException("data", "You must populate the data parameter with at least one value.");
             }
 
-            return null;
+            line.Append("Name,Cases,Deaths");
+            lines.Add(line.ToString().Substring(0, line.Length - 1));
+
+            foreach ( var item in data)
+            {
+                line = new StringBuilder();
+                line.Append(item.Name + "," + item.cases + "," + item.deaths) ;
+                lines.Add(line.ToString().Substring(0, line.Length - 1));
+            };
+           
+
+            System.IO.File.WriteAllLines(filePath, lines);
         }
     }
 }
