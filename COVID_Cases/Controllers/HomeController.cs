@@ -1,4 +1,5 @@
 ﻿using COVID_Cases.Models;
+using Microsoft.AspNetCore.Mvc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
@@ -16,6 +17,9 @@ namespace COVID_Cases.Controllers
 {
     public class HomeController : Controller
     {
+        RegionsViewModel model = new RegionsViewModel();
+        Countries countries = new Countries();
+        IEnumerable<CountriesSelected> countriesList;
         public async Task<ActionResult> Index()
         {
             HttpClient cliente = new HttpClient();
@@ -23,7 +27,8 @@ namespace COVID_Cases.Controllers
             cliente.DefaultRequestHeaders.Add("x-rapidapi-key", "ccc4385e04mshf4ed1ca42485851p15dd54jsn577c8b2c68c7");
             cliente.DefaultRequestHeaders.Add("x-rapidapi-host", "covid-19-statistics.p.rapidapi.com");
 
-            RegionsViewModel model = new RegionsViewModel();
+            // Reading Regions
+           
             var settings = new JsonSerializerSettings
             {
                 NullValueHandling = NullValueHandling.Ignore,
@@ -41,18 +46,22 @@ namespace COVID_Cases.Controllers
                 model.Regions = this.GetRegions(regions);
             }
 
+            // Reading Top 10 Countries
             request = cliente.GetAsync("reports").Result;
-            Countries countries = new Countries();
+            //Countries countries = new Countries();
             
             if (request.IsSuccessStatusCode)
             {
                 var resultString = request.Content.ReadAsStringAsync().Result;
                 countries = JsonConvert.DeserializeObject<Countries>(resultString, settings);
 
-                model.dataCountries =  this.GetTopCountries(countries);
+                model.dataCountries =  this.GetTopEntities(countries, "country");
+                countriesList = model.dataCountries;
+
+                //return Json(countriesList);
             }
 
-            IEnumerable<CountriesSelected> countriesList;
+            //IEnumerable<CountriesSelected> countriesList;
             //countriesList = GetProvinces("USA");
 
 
@@ -76,31 +85,49 @@ namespace COVID_Cases.Controllers
                 Value = "0"
             }); ;
 
-            return item;
+            return item.OrderBy(x => x.Text);
         }
 
-        public IEnumerable<CountriesSelected> GetTopCountries(Countries countries)
+        public IEnumerable<CountriesSelected> GetTopEntities(Countries countries, string entity)
         {
 
             List<CountriesSelected> lista = new List<CountriesSelected>();
             CountriesSelected countries1 = new CountriesSelected();
+            
            
-            var countries2 = countries.data
+            if (entity == "country")
+            {
+                var countries2 = countries.data
                 .GroupBy(y => y.Region.iso)
                 .OrderByDescending(group => group.Sum(c => c.confirmed))
                 .Take(10)
                 .Select(group => new { Name = group.Key, Cases = group.Sum(a => a.confirmed), Deaths = group.Sum(b => b.deaths) })
                 .ToList();
-              
-            foreach (var item in countries2)
-            {
-                lista.Add(new CountriesSelected { Name = item.Name, cases = item.Cases, deaths = item.Deaths });
-            }
 
+                foreach (var item in countries2)
+                {
+                    lista.Add(new CountriesSelected { Name = item.Name, cases = item.Cases, deaths = item.Deaths });
+                }
+            }
+            else //Provinces
+            {
+                var countries2 = countries.data
+               .GroupBy(y => y.Region.province)
+               .OrderByDescending(group => group.Sum(c => c.confirmed))
+               .Take(10)
+               .Select(group => new { Name = group.Key, Cases = group.Sum(a => a.confirmed), Deaths = group.Sum(b => b.deaths) })
+               .ToList();
+
+                foreach (var item in countries2)
+                {
+                    lista.Add(new CountriesSelected { Name = item.Name, cases = item.Cases, deaths = item.Deaths });
+                }
+            }
+            
             return lista;
         }
 
-        //public async Task<JsonResult> GetProvincesAsync(string ProvinceId)
+  
         public JsonResult GetProvinces(string ProvinceId)
         {
             HttpClient cliente = new HttpClient();
@@ -110,8 +137,7 @@ namespace COVID_Cases.Controllers
 
             UriBuilder builder = new UriBuilder("https://covid-19-statistics.p.rapidapi.com/reports");
             builder.Query = "iso=" + ProvinceId;
-            RegionsViewModel model = new RegionsViewModel();
-
+            
             var settings = new JsonSerializerSettings
             {
                 NullValueHandling = NullValueHandling.Ignore,
@@ -119,8 +145,8 @@ namespace COVID_Cases.Controllers
             };
 
             var request = cliente.GetAsync(builder.Uri).Result;
-            Countries countries = new Countries();
-            IEnumerable<CountriesSelected> countriesList;
+            //Countries countries = new Countries();
+            //IEnumerable<CountriesSelected> countriesList;
 
             if (request.IsSuccessStatusCode)
             {
@@ -128,7 +154,7 @@ namespace COVID_Cases.Controllers
                 countries = JsonConvert.DeserializeObject<Countries>(resultString, settings);
 
                 //model.dataCountries = this.GetTopProvinces(countries);
-                countriesList= this.GetTopProvinces(countries);
+                countriesList= this.GetTopEntities(countries, "province");
 
                 return Json(countriesList);
             }
@@ -136,25 +162,41 @@ namespace COVID_Cases.Controllers
             return null;
         }
 
-        public IEnumerable<CountriesSelected> GetTopProvinces(Countries countries)
+        //public async Task<IActionResult> ConvertToJson(int? id)
+       public IActionResult ConvertToXML()
         {
-
-            List<CountriesSelected> lista = new List<CountriesSelected>();
-            CountriesSelected countries1 = new CountriesSelected();
-
-            var countries2 = countries.data
-                .GroupBy(y => y.Region.province)
-                .OrderByDescending(group => group.Sum(c => c.confirmed))
-                .Take(10)
-                .Select(group => new { Name = group.Key, Cases = group.Sum(a => a.confirmed), Deaths = group.Sum(b => b.deaths) })
-                .ToList();
-
-            foreach (var item in countries2)
+            var prueba = "";
+            //countriesList = this.GetTopEntities(countries, "country");
+            foreach (var item in countriesList)
             {
-                lista.Add(new CountriesSelected { Name = item.Name, cases = item.Cases, deaths = item.Deaths });
+                prueba = item.Name;
             }
 
-            return lista;
+            return null;
+        }
+
+
+        public IActionResult ConvertToJson()
+        {
+            var prueba = "";
+            foreach (var item in model.dataCountries)
+            {
+                prueba = item.Name;
+            }
+            
+            return null;
+
+        }
+
+        public IActionResult ConvertToCSV()
+        {
+            var prueba = "";
+            foreach (var item in model.dataCountries)
+            {
+                prueba = item.Name;
+            }
+
+            return null;
         }
     }
 }
