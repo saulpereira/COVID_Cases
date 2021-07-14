@@ -21,7 +21,7 @@ namespace COVID_Cases.Controllers
     public class HomeController : Controller
     {
         IEnumerable<CountriesSelected> countries;
-        public async Task<ActionResult> Index()
+        public ActionResult Index()
         {
             RegionsViewModel model = new RegionsViewModel();
             

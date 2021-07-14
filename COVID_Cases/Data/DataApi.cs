@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
 
@@ -21,7 +22,7 @@ namespace COVID_Cases.Data
 
             RegionsViewModel model = new RegionsViewModel();
             Countries countries = new Countries();
-            IEnumerable<SelectListItem> ListRegions;
+            //IEnumerable<SelectListItem> ListRegions;
             //IEnumerable<CountriesSelected> countriesList;
             // Reading Regions
 
@@ -92,9 +93,6 @@ namespace COVID_Cases.Data
 
                 countriesList = GetTopEntities(countries, "country");
                 return countriesList;
-                //countriesList = model.dataCountries;
-
-                //return Json(countriesList);
             }
 
             return null;
@@ -162,15 +160,12 @@ namespace COVID_Cases.Data
             };
 
             var request = cliente.GetAsync(builder.Uri).Result;
-            //Countries countries = new Countries();
-            //IEnumerable<CountriesSelected> countriesList;
-
+          
             if (request.IsSuccessStatusCode)
             {
                 var resultString = request.Content.ReadAsStringAsync().Result;
                 countries = JsonConvert.DeserializeObject<Countries>(resultString, settings);
 
-                //model.dataCountries = this.GetTopProvinces(countries);
                 countriesList = GetTopEntities(countries, "province");
 
                 return Json(countriesList);
